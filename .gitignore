@@ -1,0 +1,14 @@
+.idea
+node_modules
+.DS_Store
+
+# Python e2e test artifacts
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+
+# environment files
+.env
+
