@@ -1,0 +1,168 @@
+openapi: 3.0.3
+info:
+  title: Feature Flag Manager API
+  version: 1.0.0
+  description: Internal feature management and cache-only external evaluation API.
+servers:
+  - url: http://localhost:8080
+paths:
+  /healthz:
+    get:
+      summary: Check PostgreSQL and Redis health
+      responses:
+        '200': { description: Dependencies are healthy }
+        '503': { $ref: '#/components/responses/DependencyUnavailable' }
+  /api/v1/internal/features:
+    get:
+      summary: List features from PostgreSQL
+      responses:
+        '200':
+          description: Features
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Feature' }
+        '503': { $ref: '#/components/responses/DependencyUnavailable' }
+    post:
+      summary: Create a feature
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateFeatureRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Feature' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '503': { $ref: '#/components/responses/DependencyUnavailable' }
+  /api/v1/internal/features/{name}:
+    parameters:
+      - $ref: '#/components/parameters/FeatureName'
+    get:
+      summary: Get a feature from PostgreSQL
+      responses:
+        '200': { $ref: '#/components/responses/Feature' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/DependencyUnavailable' }
+    put:
+      summary: Replace a feature; its name is immutable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateFeatureRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/Feature' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/DependencyUnavailable' }
+    delete:
+      summary: Delete a feature
+      responses:
+        '204': { description: Feature deleted }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/DependencyUnavailable' }
+  /api/v1/internal/cache/refresh:
+    post:
+      summary: Synchronously rebuild Redis from PostgreSQL
+      responses:
+        '200':
+          description: Cache rebuilt
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [refreshed]
+                properties:
+                  refreshed: { type: integer, minimum: 0 }
+        '503': { $ref: '#/components/responses/DependencyUnavailable' }
+  /api/v1/external/features/{name}/users/{userId}/evaluation:
+    get:
+      summary: Evaluate a feature exclusively from Redis
+      parameters:
+        - $ref: '#/components/parameters/FeatureName'
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 255 }
+      responses:
+        '200':
+          description: Evaluation result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Evaluation' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/DependencyUnavailable' }
+components:
+  parameters:
+    FeatureName:
+      name: name
+      in: path
+      required: true
+      schema: { type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$', maxLength: 100 }
+  schemas:
+    CreateFeatureRequest:
+      type: object
+      required: [name, description, status, whitelist]
+      properties:
+        name: { type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$', maxLength: 100 }
+        description: { type: string, maxLength: 2000 }
+        status: { $ref: '#/components/schemas/Status' }
+        whitelist: { $ref: '#/components/schemas/Whitelist' }
+    UpdateFeatureRequest:
+      type: object
+      required: [description, status, whitelist]
+      properties:
+        description: { type: string, maxLength: 2000 }
+        status: { $ref: '#/components/schemas/Status' }
+        whitelist: { $ref: '#/components/schemas/Whitelist' }
+    Feature:
+      allOf:
+        - $ref: '#/components/schemas/CreateFeatureRequest'
+        - type: object
+          required: [statusDate]
+          properties:
+            statusDate: { type: string, format: date-time }
+    Whitelist:
+      type: array
+      maxItems: 10000
+      uniqueItems: true
+      items: { type: string, minLength: 1, maxLength: 255 }
+    Status:
+      type: string
+      enum: [open, closed, whitelisted]
+    Evaluation:
+      type: object
+      required: [featureName, userId, enabled, status]
+      properties:
+        featureName: { type: string }
+        userId: { type: string }
+        enabled: { type: boolean }
+        status: { $ref: '#/components/schemas/Status' }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+  responses:
+    Feature:
+      description: Feature
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Feature' }
+    ValidationError:
+      description: Request validation failed
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    NotFound:
+      description: Feature not found
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Conflict:
+      description: A feature with this name already exists
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    DependencyUnavailable:
+      description: PostgreSQL or Redis is unavailable
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }

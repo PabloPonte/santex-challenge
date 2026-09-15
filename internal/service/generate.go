@@ -1,0 +1,3 @@
+package service
+
+//go:generate go run go.uber.org/mock/mockgen@v0.6.0 -destination=mocks/service_mocks.go -package=mocks feature-flag-manager/internal/repository FeatureRepository,FeatureCache
