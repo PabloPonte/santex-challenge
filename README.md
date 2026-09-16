@@ -19,6 +19,35 @@ make run
 
 The API listens on `http://localhost:8080`. Check dependencies with `curl -i http://localhost:8080/healthz`. The contract is available at [docs/openapi.yaml](docs/openapi.yaml).
 
+## Repository Structure
+
+```
+santex-challenge/
+├── cmd/api/main.go              # Entry point: wiring/composition root
+├── internal/
+│   ├── config/                  # Loads configuration from environment variables
+│   ├── domain/                  # Pure entities and value objects (Feature, Status, Evaluation)
+│   ├── repository/              # FeatureRepository and FeatureCache interfaces (ports) + domain errors
+│   │   └── postgres/            # Concrete PostgreSQL implementation (pgx)
+│   ├── cache/redis/             # Concrete Redis read-mirror implementation
+│   ├── service/                 # Business logic/orchestration (use cases), validation
+│   └── http/
+│       ├── handler/             # Gin controllers: HTTP parsing <-> domain, error mapping
+│       └── router/              # Route definitions (internal/external) and middleware
+├── db/migrations/               # SQL migrations (golang-migrate) for the features table
+├── docs/openapi.yaml            # OpenAPI contract (source of truth for the public API)
+├── e2e/                         # Python/pytest E2E suite against the real API
+├── frontend/                    # React + TypeScript + Vite backoffice
+│   └── src/
+│       ├── api.ts               # Typed HTTP client + error handling (ApiError)
+│       ├── App.tsx              # Views: inventory, editor, evaluation panel
+│       └── status.ts            # Presentation helpers (labels, date formatting)
+├── docker-compose.yml           # PostgreSQL + Redis for local development
+├── Makefile                     # Automates dependencies, migrations, tests, E2E, vulncheck
+├── notes.md                     # Assumptions and design decisions
+└── README.md                    # Setup guide and consistency contract
+```
+
 ## Configuration
 
 | Variable | Local default | Usage |
