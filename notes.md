@@ -1,18 +1,17 @@
 ## Notes and Assumptions
 
-* Se va a crear una app de administración de features flags
-* La información se va a guardar en una base de datos relacional
-* Como las consultas van a ser muy frecuentes pero la escritura no, se va a crear un espejo, a modo de cache, de la base de datos en memoria (posiblemente redis) para mejorar el rendimiento de las consultas
-* El cache se va a actualizar cada vez que se haga un cambio en la base de datos, para mantener la consistencia entre ambos
-* Van a existir mecanismos de actualización de cache manual
-* Se espera poder definir los siguientes datos:
-  * feature name (unico e identificador)
+* A feature-flag administration application will be built.
+* Information will be stored in a relational database.
+* Because reads will be frequent while writes will not, an in-memory mirror of the database (possibly Redis) will be created as a cache to improve query performance.
+* The cache will be updated whenever the database changes to keep both stores consistent.
+* Manual cache-refresh mechanisms will be available.
+* The following data is expected to be defined:
+  * feature name (unique identifier)
   * feature description
-  * feature status (open, closed, whitelisted)
-  * status date (timestamp del ultimo cambio de estado)
-  * Whitelist of users (lista de usuarios que pueden usar la feature)
-* Se van a desarrollar endpoints de gestion CRUD para las features (API Internal), junto con el mecanismo de actualización de cache manual.
-* Se va a desarrollar un endpoint para consultar el estado de una feature específica para un usuario específico, se va leer desde el caché (API External)
-* Se va a desarrollar una pequeña aplicación para poder administrar las features. (Backoffice)
-* No se va a implementar seguridad en este alcance, se asume que el backoffice queda dentro de una red segura, y que la API externa va a ser consumida por un BFF que ya va a estar asegurado.
-
+  * feature status (`open`, `closed`, `whitelisted`)
+  * status date (timestamp of the latest status change)
+  * user whitelist (users allowed to use the feature)
+* CRUD management endpoints for features (the internal API) will be developed, along with the manual cache-refresh mechanism.
+* An endpoint will be developed to query the status of a specific feature for a specific user. It will read from the cache (the external API).
+* A small application for managing features will be developed (backoffice).
+* Security will not be implemented within this scope. The backoffice is assumed to run inside a trusted network, and the external API is assumed to be consumed by an already-secured BFF.
